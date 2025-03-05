@@ -1,26 +1,28 @@
 import discord
 from discord import app_commands
-from print_requester import print_random_by_query, print_random_creature_by_cmc, print_card_by_name
-from printer_main import print_request
+from print_requester import Printer
 
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
+P = Printer()
+
 with open('token.txt', 'r') as file:
     DISCORD_TOKEN = file.read()
 
 def handle_print(action, text):
-    if action == "cmc":
-        res = print_random_creature_by_cmc(text)
-        if res is None: return "Unable to print."
-        return f"Printed random creature of mana value \"{text}\"."
-    elif action == "random":
-        res = print_random_by_query(text)
+    # if action == "cmc":
+    #     res = P.print_random_creature_by_cmc(text)
+    #     if res is None: return "Unable to print."
+    #     return f"Printed random creature of mana value \"{text}\"."
+    # el
+    if action == "random":
+        res = P.print_random_by_query(text)
         if res is None: return "Unable to print."
         return f"Printed random card with query \"{text}\"."
     elif action == "name":
-        res = print_card_by_name(text)
+        res = P.print_card_by_name(text)
         if res is None: return "Unable to print."
         return f"Printed card with name \"{text}\"."
     else:
@@ -35,7 +37,7 @@ async def on_ready():
 
 @tree.command(name="print", description="Prints a card")
 @app_commands.describe(
-    action="cmc, random, name", 
+    action="random, name", 
     query="The query string"
 )
 async def print_card(interaction: discord.Interaction, action: str, query: str):
@@ -46,16 +48,13 @@ async def print_card(interaction: discord.Interaction, action: str, query: str):
         await interaction.response.send_message("Unknown action.", ephemeral=True)
 
 
-def print_image(image):
-    print_request(image, print_type="image")
-
 
 @tree.command(name="print-image", description="Prints an image")
 @app_commands.describe(image="Print an image")
 async def sendimage(interaction: discord.Interaction, image: discord.Attachment):
     if image.content_type.startswith("image/"):
         image_data = await image.read()
-        print_image(image_data)
+        P.print_image(image_data)
         await interaction.response.send_message("Printed image!")
         # await interaction.followup.send(file=await image.to_file())
     else:
