@@ -2,13 +2,11 @@ import win32ui
 import win32gui
 import win32con
 from PIL import Image
-import tempfile
-import os
-import copy
 
-from printer_utils import open_image_from_url
+from printer_utils import open_image_from_url, set_image, draw_filler_x
 
 FONT_FAMILY = "Courier New"
+FONT_WEIGHT = win32con.FW_BOLD
 
 def format_content(hdc, data, page_width, page_height):
 	current_y = 0
@@ -50,7 +48,7 @@ def create_font_to_fit_text(hdc, text, rect):
 		font = win32ui.CreateFont({
 			"name": FONT_FAMILY,
 			"height": mid,
-			"weight": win32con.FW_NORMAL
+			"weight": FONT_WEIGHT
 		})
 		hdc.SelectObject(font)
 		
@@ -71,7 +69,7 @@ def create_font_to_fit_text(hdc, text, rect):
 		return win32ui.CreateFont({
 			"name": FONT_FAMILY,
 			"height": min_font_height,
-			"weight": win32con.FW_NORMAL
+			"weight": FONT_WEIGHT
 		})
 
 
@@ -82,33 +80,26 @@ def do_print_contents_sideways(hdc, data):
 
 	hdc.SetBkMode(win32con.TRANSPARENT)
 	hdc.SetTextAlign(win32con.TA_LEFT | win32con.TA_TOP)
-	font = win32ui.CreateFont({
-		"name": "Courier New",
-		"height": 300,
-		"weight": win32con.FW_BOLD,
-		"underline": False,
-	})
-	hdc.SelectObject(font)
+	# font = win32ui.CreateFont({
+	# 	"name": "Courier New",
+	# 	"height": 300,
+	# 	"weight": FONT_WEIGHT,
+	# 	"underline": False,
+	# })
+	# hdc.SelectObject(font)
 
-	# Assuming print data is in the form:
-	#  print_obj = [
-	#     {"type": "text", "content": name},
-	#     {"type": "image_url", "content": image_url},
-	#     {"type": "text", "content": type_line},
-	#     {"type": "text", "content": oracle_text},
-	# ]
-	# print_data = [
-	# 	data[0]["content"], # title
-	# 	open_image_from_url(data[1]["content"]), # image
-	# 	data[2]["content"] + "\n\n" + data[3]["content"], # description
-	# ]
-
+	horizontal_correction = 80 # corrects for printer offset
 
 	wh_ratio = 63 / 88
 	effective_height = hdc.GetDeviceCaps(win32con.HORZRES)
 	effective_width = int(effective_height * wh_ratio)
+	effective_width -= 20 # manual correction
+	width_corrected = effective_width - horizontal_correction
+	# print(effective_height)
+	# print(effective_width)
 
-	format_content(hdc, data, effective_width, effective_height)
+	format_content(hdc, data, width_corrected, effective_height)
+	draw_filler_x(hdc, effective_width)
 
 def set_sideways(hdc):
 	page_width = hdc.GetDeviceCaps(win32con.HORZRES)
@@ -122,66 +113,4 @@ def set_sideways(hdc):
 		"Dy": 0,
 	}
 	win32gui.SetWorldTransform(hdc.GetHandleOutput(), xform)
-
-
-def set_text(hdc, text, y_obj, y_margin):
-	printable_width = hdc.GetDeviceCaps(win32con.HORZRES)
-	
-	rect = [0, y_obj[0], printable_width, 0]
-	new_h = hdc.DrawText(text, rect, win32con.DT_CALCRECT | win32con.DT_LEFT | win32con.DT_TOP | win32con.DT_WORDBREAK)
-	rect[3] = y_obj[0] + new_h
-	hdc.DrawText(text, rect, win32con.DT_LEFT | win32con.DT_TOP | win32con.DT_WORDBREAK)
-
-	y_obj[0] += new_h + y_margin
-
-
-def set_image(hdc, image_path, rect):
-	# Load and convert the image to RGB
-	image = Image.open(image_path).convert("RGB")
-
-
-	# Get image rect
-	image_wh_ratio = image.size[0] / image.size[1]
-	target_w = int(rect[3] * image_wh_ratio)
-	target_h = rect[3]
-	target_x = rect[0] + int((rect[2] - target_w) / 2) # center
-	target_y = rect[1]
-
-
-	# Create a temporary file to hold the BMP image
-	with tempfile.NamedTemporaryFile(delete=False, suffix='.bmp') as temp_file:
-		bmp_file_path = temp_file.name
-		image.save(bmp_file_path, format='BMP')
-
-	hdc_bitmap = win32gui.LoadImage(
-		0,  # hInstance, 0 for loading from file
-		bmp_file_path,  # File path to the BMP file
-		win32gui.IMAGE_BITMAP,  # Image type
-		0, 0,  # Desired width and height (0 to use the actual size)
-		win32gui.LR_LOADFROMFILE | win32gui.LR_CREATEDIBSECTION  # Load from file and create a DIB section
-	)
-
-
-	# Create a compatible device context and select the bitmap into it
-	mem_dc = hdc.CreateCompatibleDC()
-	mem_dc.SelectObject(win32ui.CreateBitmapFromHandle(hdc_bitmap))
-
-	# Draw the image at the specified coordinates
-	win32gui.StretchBlt(
-		hdc.GetSafeHdc(),  # Destination device context handle
-		target_x, target_y,  # Destination x, y coordinates
-		target_w, target_h,  # Destination width and height
-		mem_dc.GetSafeHdc(),  # Source device context handle
-		0, 0,  # Source x, y coordinates
-		image.size[0], image.size[1],  # Source width and height
-		win32con.SRCCOPY  # Raster operation code
-	)
-
-	# Clean up
-	mem_dc.DeleteDC()
-	
-	# Remove the temporary BMP file
-	os.remove(bmp_file_path)
-
-
 

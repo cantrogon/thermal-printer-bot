@@ -1,0 +1,8 @@
+__pycache__
+venv/
+token.txt
+notes.txt
+output/
+rick.png
+bot-test.py
+backend.py

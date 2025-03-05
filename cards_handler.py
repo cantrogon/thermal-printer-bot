@@ -32,6 +32,10 @@ def handle_card(data):
     }
     return new_data
 
+def get_random_card():
+    url = f"https://api.scryfall.com/cards/random"
+    return get_card_data(url)
+
 def get_random_card_by_query(query):
     url = f"https://api.scryfall.com/cards/random?q={query}"
     return get_card_data(url)

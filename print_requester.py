@@ -1,4 +1,4 @@
-from cards_handler import get_random_card_by_query, get_card_by_name
+from cards_handler import get_random_card_by_query, get_card_by_name, get_random_card
 from printer_main import print_request
 import re
 
@@ -11,7 +11,7 @@ def print_card(data, print_type="sideways"):
 		print("Error: Card not found")
 		return None
 
-	name = f"{data["name"]} - {data["mana_cost"]}"
+	name = f"{data["name"]} - {data["mana_cost"]}" if data["mana_cost"] else data["name"]
 	image_url = data["image_uri"]
 	type_line = replace_character(data["type_line"], "—", "-")
 	oracle_text = data["oracle_text"]
@@ -51,8 +51,11 @@ def print_card(data, print_type="sideways"):
 		]
 
 	print_request(print_obj, print_type=print_type)
+	return True
 
 
+def print_random():
+	return print_card(get_random_card())
 
 def print_random_by_query(query):
 	return print_card(get_random_card_by_query(query))
@@ -74,6 +77,18 @@ if __name__ == "__main__":
 	# print_card_by_name("Vengeful Strangler // Strangling Grasp")
 	# print_text_windows(None)
 
-	card_data = get_random_card_by_query("cmc=2")
-	print_card(card_data, print_type="straight")
+	# card_data = get_random_card_by_query("cmc=2")
+	# print_card(card_data, print_type="straight")
 	# print_card(card_data, print_type="sideways")
+
+	print_card(get_random_card_by_query("t:instant"))
+	print_card(get_random_card_by_query("t:instant"))
+	print_card(get_random_card_by_query("t:instant"))
+	print_card(get_random_card_by_query("t:instant"))
+	print_card(get_random_card_by_query("t:instant"))
+	print_card(get_random_card_by_query("t:instant"))
+	print_card(get_random_card_by_query("t:instant"))
+	print_card(get_random_card_by_query("t:instant"))
+	print_card(get_random_card_by_query("t:instant"))
+	print_card(get_random_card_by_query("t:instant"))
+
